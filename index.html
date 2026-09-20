@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nihongo Dojo — Belajar Bahasa Jepang Dasar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Mulai unduh mesin Pyodide sedini mungkin, paralel dengan parsing halaman -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js" defer></script>
+<style>
+  /* ================= CONFIG (tokens) ================= */
+  :root{
+    --bg:#f3ecd9;
+    --bg-line: rgba(43,58,53,0.035);
+    --card:#fffdf7;
+    --ink:#2b2b2b;
+    --ink-soft:#6b6455;
+    --indigo:#2f3e56;
+    --indigo-soft:#4a5a74;
+    --red:#bf3131;
+    --gold:#c7973a;
+    --green:#3f7d4f;
+    --green-bg:#e6f3e8;
+    --wrong:#b23a34;
+    --wrong-bg:#faeae8;
+    --border:#e4d9bd;
+    --radius:14px;
+    --jp: 'Noto Sans JP', sans-serif;
+    --jp-head: 'Zen Maru Gothic', sans-serif;
+    --ui: 'Inter', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      repeating-linear-gradient(115deg, var(--bg-line) 0px, var(--bg-line) 1px, transparent 1px, transparent 5px),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--ui);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- loading ---------- */
+  #loading{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    text-align:center;
+    padding:24px;
+  }
+  #loading .mark{
+    font-family:var(--jp-head);
+    font-size:44px;
+    color:var(--red);
+  }
+  #loading .spinner{
+    width:26px;height:26px;
+    border:3px solid var(--border);
+    border-top-color:var(--red);
+    border-radius:50%;
+    animation:spin 0.9s linear infinite;
+  }
+  #loading p{color:var(--ink-soft); font-size:14px; margin:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---------- app shell ---------- */
+  #app{max-width:760px; margin:0 auto; padding:22px 16px 40px;}
+
+  header.top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:14px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:18px;
+  }
+  header.top .brand h1{
+    font-family:var(--jp-head);
+    font-size:26px;
+    margin:0 0 4px;
+    color:var(--indigo);
+    letter-spacing:0.5px;
+  }
+  header.top .brand h1 .kanji{
+    color:var(--red);
+  }
+  header.top .brand p{
+    margin:0;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  header.top .brand p.owner{
+    margin-top:4px;
+    font-size:11.5px;
+    color:var(--gold);
+    font-weight:600;
+    letter-spacing:0.3px;
+  }
+  .top-actions{display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
+  .seal{
+    flex-shrink:0;
+    width:46px;height:46px;
+    border-radius:8px;
+    border:2px solid var(--red);
+    color:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--jp);
+    font-weight:700;
+    font-size:20px;
+    transform:rotate(-4deg);
+  }
+  #music-toggle{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  #music-toggle.on{border-color:var(--gold); color:var(--gold);}
+
+  nav.tabs{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:8px;
+    margin-bottom:22px;
+    -ms-overflow-style:none;
+    scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{
+    flex:0 0 auto;
+    background:none;
+    border:none;
+    font-family:var(--ui);
+    font-weight:600;
+    font-size:14px;
+    color:var(--ink-soft);
+    padding:8px 4px;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    white-space:nowrap;
+  }
+  nav.tabs button.active{
+    color:var(--indigo);
+    border-bottom-color:var(--red);
+  }
+
+  section.view{display:none;}
+  section.view.active{display:block; animation:fade 0.25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  h2.view-title{
+    font-family:var(--jp-head);
+    font-size:20px;
+    color:var(--indigo);
+    margin:0 0 4px;
+  }
+  h3.sub-title{
+    font-family:var(--jp-head);
+    font-size:15px;
+    color:var(--indigo);
+    margin:24px 0 4px;
+  }
+  p.view-sub{
+    margin:0 0 18px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
+
+  /* ---------- home ---------- */
+  .home-grid{display:grid; gap:10px; margin-top:6px;}
+  .home-card{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .home-card .jp{
+    font-family:var(--jp-head);
+    font-size:22px;
+    color:var(--indigo);
+  }
+  .home-card .desc{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .home-card .arrow{color:var(--red); font-size:18px;}
+
+  /* ---------- kana grid ---------- */
+  .kana-grid{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:8px;
+  }
+  .kana-cell{
+    aspect-ratio:1/1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+  }
+  .kana-cell .ch{font-family:var(--jp); font-size:24px; line-height:1;}
+  .kana-cell .ro{font-size:10.5px; color:var(--ink-soft); margin-top:4px; text-transform:lowercase;}
+  .kana-cell.empty{visibility:hidden;}
+
+  /* ---------- kanji / angka grid ---------- */
+  .kanji-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+  }
+  .kanji-cell{
+    background:var(--card);
+    border:1px solid var(--gold);
+    border-radius:10px;
+    padding:12px 8px;
+    text-align:center;
+  }
+  .kanji-cell .ch{font-family:var(--jp); font-size:30px; color:var(--indigo);}
+  .kanji-cell .read{font-size:10.5px; color:var(--ink-soft); margin-top:6px; line-height:1.5;}
+  .kanji-cell .read b{color:var(--red); font-weight:700;}
+  .kanji-cell .mean{font-size:12px; font-weight:600; margin-top:4px;}
+
+  /* ---------- vocab ---------- */
+  .chip-row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;}
+  .chip{
+    font-size:12.5px;
+    font-weight:600;
+    padding:6px 12px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--card);
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .chip.active{background:var(--indigo); border-color:var(--indigo); color:#fff;}
+
+  .vocab-ledger{border-top:1px solid var(--border);}
+  .vocab-row{
+    display:grid;
+    grid-template-columns:1.1fr 1fr 1fr;
+    gap:8px;
+    align-items:center;
+    padding:11px 4px;
+    border-bottom:1px solid var(--border);
+  }
+  .vocab-row .jp{font-family:var(--jp); font-size:16px;}
+  .vocab-row .ro{font-size:12px; color:var(--ink-soft); font-style:italic;}
+  .vocab-row .id{font-size:13.5px; font-weight:600; color:var(--indigo);}
+
+  /* ---------- quiz ---------- */
+  .quiz-meta{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .quiz-bar{height:5px; background:var(--border); border-radius:3px; margin-bottom:22px; overflow:hidden;}
+  .quiz-bar-fill{height:100%; background:var(--red); width:0%; transition:width 0.3s ease;}
+
+  .quiz-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:26px 20px;
+    text-align:center;
+    margin-bottom:18px;
+  }
+  .quiz-card .hint{font-size:12px; color:var(--ink-soft); margin-bottom:8px;}
+  .quiz-card .prompt{
+    font-family:var(--jp-head);
+    font-size:28px;
+    color:var(--indigo);
+  }
+  .quiz-card .prompt.jp{font-family:var(--jp);}
+
+  .quiz-options{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .quiz-opt{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 10px;
+    font-family:var(--jp);
+    font-size:15px;
+    cursor:pointer;
+    text-align:center;
+  }
+  .quiz-opt:hover{border-color:var(--indigo-soft);}
+  .quiz-opt.correct{background:var(--green-bg); border-color:var(--green); color:var(--green);}
+  .quiz-opt.wrong{background:var(--wrong-bg); border-color:var(--wrong); color:var(--wrong);}
+  .quiz-opt[disabled]{cursor:default;}
+
+  .quiz-feedback{
+    margin-top:14px;
+    font-size:14px;
+    font-weight:600;
+    min-height:20px;
+  }
+  .quiz-feedback.correct{color:var(--green);}
+  .quiz-feedback.wrong{color:var(--wrong);}
+
+  .quiz-next{
+    display:none;
+    margin-top:16px;
+    width:100%;
+    background:var(--indigo);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:13px;
+    font-family:var(--ui);
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+
+  .quiz-result{text-align:center; padding:30px 16px;}
+  .quiz-result .score{
+    font-family:var(--jp-head);
+    font-size:44px;
+    color:var(--red);
+    margin:10px 0;
+  }
+  .quiz-result p{color:var(--ink-soft); font-size:13.5px;}
+  .quiz-restart{
+    margin-top:14px;
+    background:var(--red);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:13px 22px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  /* ---------- translate ---------- */
+  .tl-box{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px;
+  }
+  .tl-direction{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    margin-bottom:16px;
+    font-family:var(--jp-head);
+    font-size:14px;
+    color:var(--indigo);
+  }
+  .tl-direction button{
+    background:none;
+    border:1px solid var(--border);
+    border-radius:999px;
+    width:36px;height:36px;
+    font-size:16px;
+    cursor:pointer;
+    color:var(--red);
+  }
+  .tl-box textarea{
+    width:100%;
+    min-height:90px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+    font-family:var(--jp);
+    font-size:15px;
+    resize:vertical;
+    background:#fffef9;
+  }
+  .tl-btn{
+    margin-top:10px;
+    width:100%;
+    background:var(--indigo);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:12px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .tl-btn[disabled]{opacity:0.6; cursor:default;}
+  .tl-result{
+    margin-top:14px;
+    padding:14px;
+    background:var(--green-bg);
+    border:1px solid var(--green);
+    border-radius:10px;
+    font-family:var(--jp);
+    font-size:16px;
+    color:var(--ink);
+    min-height:24px;
+  }
+  .tl-result.error{background:var(--wrong-bg); border-color:var(--wrong); color:var(--wrong); font-family:var(--ui); font-size:13px;}
+  .tl-note{font-size:11.5px; color:var(--ink-soft); margin-top:10px; line-height:1.5;}
+
+  /* ---------- kontak ---------- */
+  .kontak-box{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:24px 18px;
+    text-align:center;
+  }
+  .kontak-box .made-by{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  .kontak-box .made-by b{color:var(--indigo); font-family:var(--jp-head);}
+  .kontak-box .links{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-width:320px;
+    margin:0 auto;
+  }
+  .contact-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:13px 16px;
+    border-radius:10px;
+    font-size:13.5px;
+    text-decoration:none;
+  }
+  .contact-row.disabled{
+    color:var(--ink-soft);
+    border:1px dashed var(--border);
+    cursor:default;
+  }
+  .contact-row.disabled .go{color:var(--ink-soft); font-size:12px;}
+  a.contact-row{
+    color:var(--ink);
+    font-weight:600;
+    border:1px solid var(--border);
+    background:#fffef9;
+    cursor:pointer;
+  }
+  a.contact-row:hover{
+    border-color:var(--red);
+    background:var(--wrong-bg);
+  }
+  a.contact-row .go{color:var(--red); font-weight:700; font-size:12.5px; flex-shrink:0;}
+  .contact-row .label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .contact-row .label svg{flex-shrink:0;}
+
+  @media (max-width:420px){
+    .kana-grid{grid-template-columns:repeat(5,1fr); gap:6px;}
+    .kana-cell .ch{font-size:19px;}
+    .kanji-grid{grid-template-columns:repeat(3,1fr);}
+    .quiz-options{grid-template-columns:1fr;}
+    .vocab-row{grid-template-columns:1fr 1fr; row-gap:2px;}
+    .vocab-row .id{grid-column:1/3;}
+  }
+</style>
+</head>
+<body>
+
+  <div id="app">
+    <header class="top">
+      <div class="brand">
+        <h1><span class="kanji">日本語</span> Dojo</h1>
+        <p>Belajar dasar Hiragana, Katakana, Kanji &amp; kosakata Jepang</p>
+        <p class="owner" id="owner-line"></p>
+      </div>
+      <div class="top-actions">
+        <div class="seal">語</div>
+        <button id="music-toggle" type="button">🔈 Musik</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button data-view="home" class="active">Beranda</button>
+      <button data-view="hiragana">Hiragana</button>
+      <button data-view="katakana">Katakana</button>
+      <button data-view="angka">Angka</button>
+      <button data-view="kanji">Kanji</button>
+      <button data-view="vocab">Kosakata</button>
+      <button data-view="translate">Translate</button>
+      <button data-view="quiz">Kuis</button>
+      <button data-view="kontak">Kontak</button>
+    </nav>
+
+    <!-- HOME -->
+    <section class="view active" id="view-home">
+      <h2 class="view-title">Selamat datang</h2>
+      <p class="view-sub">Pilih materi untuk mulai belajar, lalu uji dirimu lewat kuis.</p>
+      <div class="home-grid">
+        <button class="home-card" data-goto="hiragana">
+          <div><div class="jp">ひらがな</div><div class="desc">46 huruf Hiragana dasar</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="katakana">
+          <div><div class="jp">カタカナ</div><div class="desc">46 huruf Katakana dasar</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="angka">
+          <div><div class="jp">数字</div><div class="desc">Angka dalam Kanji</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="kanji">
+          <div><div class="jp">漢字</div><div class="desc">Kanji dasar sehari-hari</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="vocab">
+          <div><div class="jp">単語</div><div class="desc">Contoh kosakata sehari-hari</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="translate">
+          <div><div class="jp">翻訳</div><div class="desc">Terjemahkan Indonesia ⇄ Jepang</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="quiz">
+          <div><div class="jp">クイズ</div><div class="desc">Uji kemampuanmu</div></div>
+          <div class="arrow">→</div>
+        </button>
+        <button class="home-card" data-goto="kontak">
+          <div><div class="jp">連絡先</div><div class="desc">Info kontak pembuat</div></div>
+          <div class="arrow">→</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- HIRAGANA -->
+    <section class="view" id="view-hiragana">
+      <h2 class="view-title">Hiragana</h2>
+      <p class="view-sub">Huruf dasar untuk menulis kata asli Jepang.</p>
+      <div class="kana-grid" id="hiragana-grid"></div>
+      <h3 class="sub-title">Dakuten (゛) &amp; Handakuten (゜)</h3>
+      <p class="view-sub">Tanda kecil ini mengubah bunyi huruf dasar, mis. か → が (ka → ga).</p>
+      <div class="kana-grid" id="hiragana-marked-grid"></div>
+    </section>
+
+    <!-- KATAKANA -->
+    <section class="view" id="view-katakana">
+      <h2 class="view-title">Katakana</h2>
+      <p class="view-sub">Dipakai untuk kata serapan asing dan penekanan.</p>
+      <div class="kana-grid" id="katakana-grid"></div>
+      <h3 class="sub-title">Dakuten (゛) &amp; Handakuten (゜)</h3>
+      <p class="view-sub">Sama seperti Hiragana, tanda ini mengubah bunyi huruf dasar.</p>
+      <div class="kana-grid" id="katakana-marked-grid"></div>
+    </section>
+
+    <!-- ANGKA -->
+    <section class="view" id="view-angka">
+      <h2 class="view-title">Angka (Kanji)</h2>
+      <p class="view-sub">Angka Jepang ditulis pakai kanji tersendiri, dipisah dari kanji kata benda.</p>
+      <div class="kanji-grid" id="angka-grid"></div>
+    </section>
+
+    <!-- KANJI -->
+    <section class="view" id="view-kanji">
+      <h2 class="view-title">Kanji dasar</h2>
+      <p class="view-sub">Kanji jumlahnya ribuan — ini cuma perkenalan beberapa yang paling umum dipakai sehari-hari.</p>
+      <div class="kanji-grid" id="kanji-grid"></div>
+    </section>
+
+    <!-- VOCAB -->
+    <section class="view" id="view-vocab">
+      <h2 class="view-title">Kosakata</h2>
+      <p class="view-sub">Jepang · Romaji · Indonesia</p>
+      <div class="chip-row" id="vocab-chips"></div>
+      <div class="vocab-ledger" id="vocab-list"></div>
+    </section>
+
+    <!-- TRANSLATE -->
+    <section class="view" id="view-translate">
+      <h2 class="view-title">Translate</h2>
+      <p class="view-sub">Terjemahan cepat Indonesia ⇄ Jepang.</p>
+      <div class="tl-box">
+        <div class="tl-direction">
+          <span id="tl-from">Indonesia</span>
+          <button id="tl-swap" type="button" title="Tukar arah">⇄</button>
+          <span id="tl-to">Jepang</span>
+        </div>
+        <textarea id="tl-input" placeholder="Tulis teks di sini..."></textarea>
+        <button class="tl-btn" id="tl-run" type="button">Terjemahkan</button>
+        <div class="tl-result" id="tl-result" style="display:none;"></div>
+        <p class="tl-note">Menggunakan layanan terjemahan gratis (MyMemory). Cocok untuk kata/kalimat pendek — untuk kalimat panjang atau formal, hasilnya bisa kurang akurat.</p>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section class="view" id="view-quiz">
+      <h2 class="view-title">Kuis</h2>
+      <p class="view-sub">Jawab 10 soal acak, dua arah: Jepang → Indonesia dan Indonesia → Jepang.</p>
+      <div id="quiz-body"></div>
+    </section>
+
+    <!-- KONTAK -->
+    <section class="view" id="view-kontak">
+      <h2 class="view-title">Kontak</h2>
+      <p class="view-sub">Ada saran, pertanyaan, atau mau kolaborasi? Hubungi lewat salah satu di bawah ini.</p>
+      <div class="kontak-box">
+        <div class="made-by">Dibuat oleh <b id="footer-owner"></b></div>
+        <div class="links" id="contact-links"></div>
+      </div>
+    </section>
+  </div>
+
+<script id="py-code" type="text/python">
+# ================= CONFIG =================
+QUIZ_LENGTH = 15
+NUM_OPTIONS = 4
+
+import json
+import random
+
+# (japanese, romaji, indonesia, category) — sumber data untuk logika Kuis.
+# Salinan tampilannya ada di JS_DATA (JS) supaya kosakata & kuis bisa
+# tetap muncul cepat tanpa menunggu Pyodide.
+VOCAB = [
+    ("こんにちは","konnichiwa","halo / selamat siang","Sapaan"),
+    ("おはよう","ohayou","selamat pagi","Sapaan"),
+    ("こんばんは","konbanwa","selamat malam","Sapaan"),
+    ("さようなら","sayounara","selamat tinggal","Sapaan"),
+    ("ありがとう","arigatou","terima kasih","Sapaan"),
+    ("すみません","sumimasen","permisi / maaf","Sapaan"),
+    ("はい","hai","ya","Sapaan"),
+    ("いいえ","iie","tidak","Sapaan"),
+    ("ねこ","neko","kucing","Hewan"),
+    ("いぬ","inu","anjing","Hewan"),
+    ("とり","tori","burung","Hewan"),
+    ("うま","uma","kuda","Hewan"),
+    ("さかな","sakana","ikan","Hewan"),
+    ("うさぎ","usagi","kelinci","Hewan"),
+    ("ぞう","zou","gajah","Hewan"),
+    ("さる","saru","monyet","Hewan"),
+    ("ぶた","buta","babi","Hewan"),
+    ("うし","ushi","sapi","Hewan"),
+    ("ごはん","gohan","nasi","Makanan"),
+    ("みず","mizu","air","Makanan"),
+    ("おちゃ","ocha","teh","Makanan"),
+    ("すし","sushi","sushi","Makanan"),
+    ("たまご","tamago","telur","Makanan"),
+    ("にく","niku","daging","Makanan"),
+    ("パン","pan","roti","Makanan"),
+    ("りんご","ringo","apel","Makanan"),
+    ("やさい","yasai","sayur","Makanan"),
+    ("くだもの","kudamono","buah","Makanan"),
+    ("あか","aka","merah","Warna"),
+    ("あお","ao","biru","Warna"),
+    ("きいろ","kiiro","kuning","Warna"),
+    ("しろ","shiro","putih","Warna"),
+    ("くろ","kuro","hitam","Warna"),
+    ("みどり","midori","hijau","Warna"),
+    ("オレンジ","orenji","oranye","Warna"),
+    ("ピンク","pinku","merah muda","Warna"),
+    ("むらさき","murasaki","ungu","Warna"),
+    ("はいいろ","haiiro","abu-abu","Warna"),
+    ("かぞく","kazoku","keluarga","Keluarga"),
+    ("ちち","chichi","ayah","Keluarga"),
+    ("はは","haha","ibu","Keluarga"),
+    ("あに","ani","kakak laki-laki","Keluarga"),
+    ("あね","ane","kakak perempuan","Keluarga"),
+    ("いもうと","imouto","adik perempuan","Keluarga"),
+    ("おとうと","otouto","adik laki-laki","Keluarga"),
+    ("おばあさん","obaasan","nenek","Keluarga"),
+    ("おじいさん","ojiisan","kakek","Keluarga"),
+    ("がっこう","gakkou","sekolah","Umum"),
+    ("ほん","hon","buku","Umum"),
+    ("くるま","kuruma","mobil","Umum"),
+    ("いえ","ie","rumah","Umum"),
+    ("みち","michi","jalan","Umum"),
+    ("とけい","tokei","jam","Umum"),
+    ("きょう","kyou","hari ini","Waktu"),
+    ("あした","ashita","besok","Waktu"),
+    ("きのう","kinou","kemarin","Waktu"),
+    ("いま","ima","sekarang","Waktu"),
+    ("はれ","hare","cerah","Cuaca"),
+    ("あめ","ame","hujan","Cuaca"),
+    ("ゆき","yuki","salju","Cuaca"),
+    ("くもり","kumori","mendung","Cuaca"),
+    ("あたま","atama","kepala","Tubuh"),
+    ("かお","kao","wajah","Tubuh"),
+    ("おなか","onaka","perut","Tubuh"),
+]
+
+_quiz_questions = []
+_quiz_index = 0
+_quiz_score = 0
+
+def _build_question(word, direction):
+    jp, ro, idn, cat = word
+    if direction == "jp2id":
+        prompt = jp
+        prompt_sub = ro
+        correct = idn
+        pool = [v[2] for v in VOCAB if v[2] != idn]
+    else:
+        prompt = idn
+        prompt_sub = ""
+        correct = jp
+        pool = [v[0] for v in VOCAB if v[0] != jp]
+
+    distractors = random.sample(pool, min(NUM_OPTIONS - 1, len(pool)))
+    options = distractors + [correct]
+    random.shuffle(options)
+
+    return {
+        "direction": direction,
+        "prompt": prompt,
+        "prompt_sub": prompt_sub,
+        "correct": correct,
+        "options": options,
+    }
+
+def start_quiz():
+    global _quiz_questions, _quiz_index, _quiz_score
+    words = random.sample(VOCAB, min(QUIZ_LENGTH, len(VOCAB)))
+    _quiz_questions = [
+        _build_question(w, random.choice(["jp2id", "id2jp"])) for w in words
+    ]
+    _quiz_index = 0
+    _quiz_score = 0
+    return json.dumps({
+        "question": _quiz_questions[0],
+        "index": 0,
+        "total": len(_quiz_questions),
+        "score": 0,
+    }, ensure_ascii=False)
+
+def submit_answer(selected):
+    global _quiz_score
+    q = _quiz_questions[_quiz_index]
+    is_correct = (selected == q["correct"])
+    if is_correct:
+        _quiz_score += 1
+    return json.dumps({
+        "is_correct": is_correct,
+        "correct": q["correct"],
+        "score": _quiz_score,
+        "index": _quiz_index,
+        "total": len(_quiz_questions),
+    }, ensure_ascii=False)
+
+def advance_quiz():
+    global _quiz_index
+    _quiz_index += 1
+    if _quiz_index >= len(_quiz_questions):
+        return json.dumps({
+            "finished": True,
+            "score": _quiz_score,
+            "total": len(_quiz_questions),
+        }, ensure_ascii=False)
+    return json.dumps({
+        "finished": False,
+        "question": _quiz_questions[_quiz_index],
+        "index": _quiz_index,
+        "total": len(_quiz_questions),
+        "score": _quiz_score,
+    }, ensure_ascii=False)
+</script>
+
+<script>
+// ================= CONFIG =================
+const APP_CONFIG = {
+  appTitle: "Nihongo Dojo",
+  ownerName: "Gx Dikzz",              // <- ganti sesuai nama/brand kamu
+};
+
+// Isi manual info kontak kamu di sini (kosongkan "" kalau tidak dipakai)
+const CONTACT_INFO = {
+  email: "gxdikzz@gmail.com",        
+  whatsapp: "6285768090238",    
+  instagram: "rezonexd_bot",    
+};
+
+// Konfigurasi backsound ambient (disintesis, tanpa file audio eksternal)
+const MUSIC_CONFIG = {
+  volume: 0.05,
+  frequencies: [220.00, 261.63, 329.63], // A3 - C4 - E4, akor lembut
+};
+
+// Logo resmi (SVG) untuk tombol kontak
+const CONTACT_ICONS = {
+  email: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.2V6h16v.2l-8 6.4-8-6.4zM4 8.56V18h16V8.56l-8 6.4-8-6.4z"/></svg>`,
+  whatsapp: `<svg viewBox="0 0 24 24" width="20" height="20" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884M20.463 3.488A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>`,
+  instagram: `<svg viewBox="0 0 24 24" width="20" height="20"><defs><radialGradient id="igGrad" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="10%" stop-color="#fdf497"/><stop offset="30%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><path fill="url(#igGrad)" d="M12 0C8.74 0 8.333.014 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.014 8.333 0 8.74 0 12s.014 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.986 8.74 24 12 24s3.667-.014 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913C23.986 15.667 24 15.26 24 12s-.014-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.014 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06zM12 5.838c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.645-1.44-1.44 0-.794.646-1.439 1.44-1.439.793 0 1.44.645 1.44 1.439z"/></svg>`,
+};
+
+// Salinan data statis (sama persis dengan yang ada di blok Python) supaya
+// halaman Hiragana/Katakana/Angka/Kanji/Kosakata bisa tampil INSTAN tanpa
+// menunggu Pyodide selesai dimuat. Pyodide cuma dipakai untuk logika Kuis.
+const JS_DATA = {
+  hiragana: [
+    [["あ","a"],["い","i"],["う","u"],["え","e"],["お","o"]],
+    [["か","ka"],["き","ki"],["く","ku"],["け","ke"],["こ","ko"]],
+    [["さ","sa"],["し","shi"],["す","su"],["せ","se"],["そ","so"]],
+    [["た","ta"],["ち","chi"],["つ","tsu"],["て","te"],["と","to"]],
+    [["な","na"],["に","ni"],["ぬ","nu"],["ね","ne"],["の","no"]],
+    [["は","ha"],["ひ","hi"],["ふ","fu"],["へ","he"],["ほ","ho"]],
+    [["ま","ma"],["み","mi"],["む","mu"],["め","me"],["も","mo"]],
+    [["や","ya"],null,["ゆ","yu"],null,["よ","yo"]],
+    [["ら","ra"],["り","ri"],["る","ru"],["れ","re"],["ろ","ro"]],
+    [["わ","wa"],null,null,null,["を","wo"]],
+    [["ん","n"],null,null,null,null],
+  ],
+  // Dakuten (゛) mengubah bunyi jadi "berat/bersuara", handakuten (゜) khusus baris H jadi bunyi "p"
+  hiraganaMarked: [
+    [["が","ga"],["ぎ","gi"],["ぐ","gu"],["げ","ge"],["ご","go"]],
+    [["ざ","za"],["じ","ji"],["ず","zu"],["ぜ","ze"],["ぞ","zo"]],
+    [["だ","da"],["ぢ","ji"],["づ","zu"],["で","de"],["ど","do"]],
+    [["ば","ba"],["び","bi"],["ぶ","bu"],["べ","be"],["ぼ","bo"]],
+    [["ぱ","pa"],["ぴ","pi"],["ぷ","pu"],["ぺ","pe"],["ぽ","po"]],
+  ],
+  katakana: [
+    [["ア","a"],["イ","i"],["ウ","u"],["エ","e"],["オ","o"]],
+    [["カ","ka"],["キ","ki"],["ク","ku"],["ケ","ke"],["コ","ko"]],
+    [["サ","sa"],["シ","shi"],["ス","su"],["セ","se"],["ソ","so"]],
+    [["タ","ta"],["チ","chi"],["ツ","tsu"],["テ","te"],["ト","to"]],
+    [["ナ","na"],["ニ","ni"],["ヌ","nu"],["ネ","ne"],["ノ","no"]],
+    [["ハ","ha"],["ヒ","hi"],["フ","fu"],["ヘ","he"],["ホ","ho"]],
+    [["マ","ma"],["ミ","mi"],["ム","mu"],["メ","me"],["モ","mo"]],
+    [["ヤ","ya"],null,["ユ","yu"],null,["ヨ","yo"]],
+    [["ラ","ra"],["リ","ri"],["ル","ru"],["レ","re"],["ロ","ro"]],
+    [["ワ","wa"],null,null,null,["ヲ","wo"]],
+    [["ン","n"],null,null,null,null],
+  ],
+  katakanaMarked: [
+    [["ガ","ga"],["ギ","gi"],["グ","gu"],["ゲ","ge"],["ゴ","go"]],
+    [["ザ","za"],["ジ","ji"],["ズ","zu"],["ゼ","ze"],["ゾ","zo"]],
+    [["ダ","da"],["ヂ","ji"],["ヅ","zu"],["デ","de"],["ド","do"]],
+    [["バ","ba"],["ビ","bi"],["ブ","bu"],["ベ","be"],["ボ","bo"]],
+    [["パ","pa"],["ピ","pi"],["プ","pu"],["ペ","pe"],["ポ","po"]],
+  ],
+  // Angka pakai kanji tersendiri. on = cara baca Onyomi (katakana), kun = Kunyomi (hiragana)
+  angka: [
+    ["零","レイ","","0"],
+    ["一","イチ","ひと(つ)","1"],
+    ["二","ニ","ふた(つ)","2"],
+    ["三","サン","みっ(つ)","3"],
+    ["四","シ","よん・よっ(つ)","4"],
+    ["五","ゴ","いつ(つ)","5"],
+    ["六","ロク","むっ(つ)","6"],
+    ["七","シチ","なな(つ)","7"],
+    ["八","ハチ","やっ(つ)","8"],
+    ["九","キュウ・ク","ここの(つ)","9"],
+    ["十","ジュウ","とお","10"],
+    ["百","ヒャク","","100"],
+    ["千","セン","","1.000"],
+    ["万","マン","","10.000"],
+  ],
+  // Kanji dasar Grade 1 Jepang (di luar angka). on = Onyomi, kun = Kunyomi.
+  // Kanji jumlahnya ribuan — ini baru sebagian yang paling dasar untuk pemula.
+  kanji: [
+    ["右","ウ・ユウ","みぎ","kanan"],
+    ["雨","ウ","あめ","hujan"],
+    ["円","エン","まる(い)","bundar, yen"],
+    ["王","オウ","","raja"],
+    ["音","オン・イン","おと","suara"],
+    ["下","カ・ゲ","した","bawah"],
+    ["火","カ","ひ","api"],
+    ["花","カ","はな","bunga"],
+    ["貝","","かい","kerang"],
+    ["学","ガク","まな(ぶ)","belajar"],
+    ["気","キ・ケ","","semangat, udara"],
+    ["休","キュウ","やす(む)","istirahat"],
+    ["玉","ギョク","たま","permata, bola"],
+    ["金","キン・コン","かね","emas, uang"],
+    ["空","クウ","そら・から","langit, kosong"],
+    ["月","ゲツ・ガツ","つき","bulan"],
+    ["犬","ケン","いぬ","anjing"],
+    ["見","ケン","み(る)","melihat"],
+    ["口","コウ・ク","くち","mulut"],
+    ["校","コウ","","sekolah"],
+    ["左","サ","ひだり","kiri"],
+    ["山","サン","やま","gunung"],
+    ["子","シ・ス","こ","anak"],
+    ["糸","シ","いと","benang"],
+    ["字","ジ","","huruf"],
+    ["耳","ジ","みみ","telinga"],
+    ["車","シャ","くるま","mobil, roda"],
+    ["手","シュ","て","tangan"],
+    ["出","シュツ","で(る)","keluar"],
+    ["女","ジョ・ニョ","おんな","perempuan"],
+    ["小","ショウ","ちい(さい)","kecil"],
+    ["上","ジョウ","うえ","atas"],
+    ["森","シン","もり","hutan"],
+    ["人","ジン・ニン","ひと","orang"],
+    ["水","スイ","みず","air"],
+    ["正","セイ・ショウ","ただ(しい)","benar"],
+    ["生","セイ・ショウ","い(きる)・なま","hidup, mentah"],
+    ["青","セイ・ショウ","あお(い)","biru, hijau muda"],
+    ["夕","セキ","ゆう","sore"],
+    ["石","セキ・シャク","いし","batu"],
+    ["赤","セキ","あか(い)","merah"],
+    ["川","セン","かわ","sungai"],
+    ["先","セン","さき","duluan, sebelumnya"],
+    ["早","ソウ","はや(い)","cepat, pagi-pagi"],
+    ["草","ソウ","くさ","rumput"],
+    ["足","ソク","あし","kaki, cukup"],
+    ["村","ソン","むら","desa"],
+    ["大","ダイ・タイ","おお(きい)","besar"],
+    ["男","ダン・ナン","おとこ","laki-laki"],
+    ["竹","チク","たけ","bambu"],
+    ["中","チュウ","なか","tengah, dalam"],
+    ["虫","チュウ","むし","serangga"],
+    ["町","チョウ","まち","kota kecil"],
+    ["天","テン","あめ・あま","langit"],
+    ["田","デン","た","sawah"],
+    ["土","ド・ト","つち","tanah"],
+    ["日","ニチ・ジツ","ひ・か","hari, matahari"],
+    ["入","ニュウ","はい(る)","masuk"],
+    ["年","ネン","とし","tahun"],
+    ["白","ハク・ビャク","しろ(い)","putih"],
+    ["文","ブン・モン","ふみ","tulisan, kalimat"],
+    ["木","ボク・モク","き","pohon, kayu"],
+    ["本","ホン","もと","buku, asal"],
+    ["名","メイ・ミョウ","な","nama"],
+    ["目","モク","め","mata"],
+    ["立","リツ","た(つ)","berdiri"],
+    ["力","リョク・リキ","ちから","tenaga"],
+    ["林","リン","はやし","hutan kecil"],
+  ],
+  // (japanese, romaji, indonesia, category)
+  vocab: [
+    ["こんにちは","konnichiwa","halo / selamat siang","Sapaan"],
+    ["おはよう","ohayou","selamat pagi","Sapaan"],
+    ["こんばんは","konbanwa","selamat malam","Sapaan"],
+    ["さようなら","sayounara","selamat tinggal","Sapaan"],
+    ["ありがとう","arigatou","terima kasih","Sapaan"],
+    ["すみません","sumimasen","permisi / maaf","Sapaan"],
+    ["はい","hai","ya","Sapaan"],
+    ["いいえ","iie","tidak","Sapaan"],
+    ["ねこ","neko","kucing","Hewan"],
+    ["いぬ","inu","anjing","Hewan"],
+    ["とり","tori","burung","Hewan"],
+    ["うま","uma","kuda","Hewan"],
+    ["さかな","sakana","ikan","Hewan"],
+    ["うさぎ","usagi","kelinci","Hewan"],
+    ["ぞう","zou","gajah","Hewan"],
+    ["さる","saru","monyet","Hewan"],
+    ["ぶた","buta","babi","Hewan"],
+    ["うし","ushi","sapi","Hewan"],
+    ["ごはん","gohan","nasi","Makanan"],
+    ["みず","mizu","air","Makanan"],
+    ["おちゃ","ocha","teh","Makanan"],
+    ["すし","sushi","sushi","Makanan"],
+    ["たまご","tamago","telur","Makanan"],
+    ["にく","niku","daging","Makanan"],
+    ["パン","pan","roti","Makanan"],
+    ["りんご","ringo","apel","Makanan"],
+    ["やさい","yasai","sayur","Makanan"],
+    ["くだもの","kudamono","buah","Makanan"],
+    ["あか","aka","merah","Warna"],
+    ["あお","ao","biru","Warna"],
+    ["きいろ","kiiro","kuning","Warna"],
+    ["しろ","shiro","putih","Warna"],
+    ["くろ","kuro","hitam","Warna"],
+    ["みどり","midori","hijau","Warna"],
+    ["オレンジ","orenji","oranye","Warna"],
+    ["ピンク","pinku","merah muda","Warna"],
+    ["むらさき","murasaki","ungu","Warna"],
+    ["はいいろ","haiiro","abu-abu","Warna"],
+    ["かぞく","kazoku","keluarga","Keluarga"],
+    ["ちち","chichi","ayah","Keluarga"],
+    ["はは","haha","ibu","Keluarga"],
+    ["あに","ani","kakak laki-laki","Keluarga"],
+    ["あね","ane","kakak perempuan","Keluarga"],
+    ["いもうと","imouto","adik perempuan","Keluarga"],
+    ["おとうと","otouto","adik laki-laki","Keluarga"],
+    ["おばあさん","obaasan","nenek","Keluarga"],
+    ["おじいさん","ojiisan","kakek","Keluarga"],
+    ["がっこう","gakkou","sekolah","Umum"],
+    ["ほん","hon","buku","Umum"],
+    ["くるま","kuruma","mobil","Umum"],
+    ["いえ","ie","rumah","Umum"],
+    ["みち","michi","jalan","Umum"],
+    ["とけい","tokei","jam","Umum"],
+    ["きょう","kyou","hari ini","Waktu"],
+    ["あした","ashita","besok","Waktu"],
+    ["きのう","kinou","kemarin","Waktu"],
+    ["いま","ima","sekarang","Waktu"],
+    ["はれ","hare","cerah","Cuaca"],
+    ["あめ","ame","hujan","Cuaca"],
+    ["ゆき","yuki","salju","Cuaca"],
+    ["くもり","kumori","mendung","Cuaca"],
+    ["あたま","atama","kepala","Tubuh"],
+    ["かお","kao","wajah","Tubuh"],
+    ["おなか","onaka","perut","Tubuh"],
+  ],
+};
+
+let VOCAB_DATA = [];
+let pyodide = null;
+let py = {}; // holds references to python callables (dipakai khusus Kuis)
+let pyReady = false;
+let pyReadyResolve;
+const pyReadyPromise = new Promise(res => { pyReadyResolve = res; });
+
+// Render semua bagian yang tidak butuh Python — langsung jalan begitu script ini dieksekusi
+renderHiragana();
+renderKatakana();
+renderAngka();
+renderKanji();
+renderVocab();
+renderOwnerAndContact();
+wireNav();
+wireMusic();
+wireTranslate();
+
+// Pyodide dimuat di LATAR BELAKANG, cuma dipakai saat menu Kuis dibuka
+function initPyodideBackground(){
+  (async ()=>{
+    pyodide = await loadPyodide();
+    const code = document.getElementById('py-code').textContent;
+    pyodide.runPython(code);
+    py.start_quiz = pyodide.globals.get('start_quiz');
+    py.submit_answer = pyodide.globals.get('submit_answer');
+    py.advance_quiz = pyodide.globals.get('advance_quiz');
+    pyReady = true;
+    pyReadyResolve();
+  })();
+}
+// pyodide.js dimuat dengan "defer" di <head>; tunggu DOM siap supaya global loadPyodide() sudah ada
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initPyodideBackground);
+}else{
+  initPyodideBackground();
+}
+
+/* ---------- owner / kontak ---------- */
+function buildContactHref(type, value){
+  if(!value) return null;
+  const v = value.trim();
+  if(v.startsWith('http://') || v.startsWith('https://') || v.startsWith('mailto:')){
+    return v; // sudah berupa link lengkap, pakai apa adanya
+  }
+  if(type === 'email') return 'mailto:' + v;
+  if(type === 'whatsapp') return 'https://wa.me/' + v.replace(/[^0-9]/g, ''); // boleh isi nomor saja, mis. "62812xxxxxxx"
+  if(type === 'instagram') return 'https://instagram.com/' + v.replace(/^@/, ''); // boleh isi username saja, mis. "gxdikzz"
+  return v;
+}
+
+function renderOwnerAndContact(){
+  document.getElementById('owner-line').textContent = 'oleh ' + APP_CONFIG.ownerName;
+  document.getElementById('footer-owner').textContent = APP_CONFIG.ownerName;
+
+  const linksEl = document.getElementById('contact-links');
+  const items = [
+    [CONTACT_ICONS.email, 'Email', buildContactHref('email', CONTACT_INFO.email)],
+    [CONTACT_ICONS.whatsapp, 'WhatsApp', buildContactHref('whatsapp', CONTACT_INFO.whatsapp)],
+    [CONTACT_ICONS.instagram, 'Instagram', buildContactHref('instagram', CONTACT_INFO.instagram)],
+  ];
+  linksEl.innerHTML = '';
+  items.forEach(([icon, label, href]) => {
+    if(href){
+      const a = document.createElement('a');
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.className = 'contact-row';
+      a.innerHTML = `<span class="label">${icon} ${label}</span><span class="go">Buka →</span>`;
+      linksEl.appendChild(a);
+    }else{
+      const div = document.createElement('div');
+      div.className = 'contact-row disabled';
+      div.innerHTML = `<span class="label">${icon} ${label}</span><span class="go">belum diisi</span>`;
+      linksEl.appendChild(div);
+    }
+  });
+}
+
+/* ---------- navigation ---------- */
+function wireNav(){
+  document.querySelectorAll('nav.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=> showView(btn.dataset.view));
+  });
+  document.querySelectorAll('.home-card').forEach(btn=>{
+    btn.addEventListener('click', ()=> showView(btn.dataset.goto));
+  });
+}
+
+function showView(name){
+  document.querySelectorAll('nav.tabs button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === name);
+  });
+  document.querySelectorAll('section.view').forEach(s=>{
+    s.classList.toggle('active', s.id === 'view-' + name);
+  });
+  if(name === 'quiz'){
+    if(pyReady){
+      startQuiz();
+    }else{
+      document.getElementById('quiz-body').innerHTML = `
+        <div class="quiz-card">
+          <div class="spinner" style="margin:0 auto 12px;"></div>
+          <div class="hint">Menyiapkan mesin kuis…</div>
+        </div>`;
+      pyReadyPromise.then(startQuiz);
+    }
+  }
+}
+
+/* ---------- hiragana / katakana ---------- */
+function renderKanaGrid(elId, rows){
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  rows.forEach(row=>{
+    row.forEach(cell=>{
+      const div = document.createElement('div');
+      if(cell === null){
+        div.className = 'kana-cell empty';
+      }else{
+        div.className = 'kana-cell';
+        div.innerHTML = `<div class="ch">${cell[0]}</div><div class="ro">${cell[1]}</div>`;
+      }
+      el.appendChild(div);
+    });
+  });
+}
+
+function renderHiragana(){
+  renderKanaGrid('hiragana-grid', JS_DATA.hiragana);
+  renderKanaGrid('hiragana-marked-grid', JS_DATA.hiraganaMarked);
+}
+function renderKatakana(){
+  renderKanaGrid('katakana-grid', JS_DATA.katakana);
+  renderKanaGrid('katakana-marked-grid', JS_DATA.katakanaMarked);
+}
+
+/* ---------- angka / kanji ---------- */
+function renderCharGrid(elId, list){
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  list.forEach(([ch, on, kun, mean])=>{
+    const div = document.createElement('div');
+    div.className = 'kanji-cell';
+    const onLine = on ? `<b>On</b> ${on}` : '';
+    const kunLine = kun ? `<b>Kun</b> ${kun}` : '';
+    const readLines = [onLine, kunLine].filter(Boolean).join('<br>');
+    div.innerHTML = `<div class="ch">${ch}</div><div class="read">${readLines}</div><div class="mean">${mean}</div>`;
+    el.appendChild(div);
+  });
+}
+function renderAngka(){
+  renderCharGrid('angka-grid', JS_DATA.angka);
+}
+function renderKanji(){
+  renderCharGrid('kanji-grid', JS_DATA.kanji);
+}
+
+/* ---------- vocab ---------- */
+function renderVocab(){
+  VOCAB_DATA = JS_DATA.vocab;
+  const categories = ['Semua', ...new Set(VOCAB_DATA.map(v=>v[3]))];
+  const chipsEl = document.getElementById('vocab-chips');
+  chipsEl.innerHTML = '';
+  categories.forEach((cat, i)=>{
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (i===0 ? ' active' : '');
+    chip.textContent = cat;
+    chip.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      renderVocabList(cat);
+    });
+    chipsEl.appendChild(chip);
+  });
+  renderVocabList('Semua');
+}
+
+function renderVocabList(cat){
+  const el = document.getElementById('vocab-list');
+  el.innerHTML = '';
+  const items = cat === 'Semua' ? VOCAB_DATA : VOCAB_DATA.filter(v=>v[3]===cat);
+  items.forEach(([jp, ro, idn])=>{
+    const row = document.createElement('div');
+    row.className = 'vocab-row';
+    row.innerHTML = `<div class="jp">${jp}</div><div class="ro">${ro}</div><div class="id">${idn}</div>`;
+    el.appendChild(row);
+  });
+}
+
+/* ---------- translate ---------- */
+let tlDirection = 'id2ja'; // id2ja atau ja2id
+
+function wireTranslate(){
+  document.getElementById('tl-swap').addEventListener('click', ()=>{
+    tlDirection = tlDirection === 'id2ja' ? 'ja2id' : 'id2ja';
+    updateTranslateLabels();
+  });
+  document.getElementById('tl-run').addEventListener('click', runTranslate);
+}
+
+function updateTranslateLabels(){
+  const fromEl = document.getElementById('tl-from');
+  const toEl = document.getElementById('tl-to');
+  if(tlDirection === 'id2ja'){
+    fromEl.textContent = 'Indonesia';
+    toEl.textContent = 'Jepang';
+  }else{
+    fromEl.textContent = 'Jepang';
+    toEl.textContent = 'Indonesia';
+  }
+}
+
+async function runTranslate(){
+  const input = document.getElementById('tl-input').value.trim();
+  const resultEl = document.getElementById('tl-result');
+  const btn = document.getElementById('tl-run');
+  if(!input){
+    return;
+  }
+  const langpair = tlDirection === 'id2ja' ? 'id|ja' : 'ja|id';
+  btn.disabled = true;
+  btn.textContent = 'Menerjemahkan...';
+  resultEl.style.display = 'block';
+  resultEl.className = 'tl-result';
+  resultEl.textContent = '...';
+
+  try{
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(input)}&langpair=${langpair}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const translated = data && data.responseData && data.responseData.translatedText;
+    if(translated){
+      resultEl.textContent = translated;
+    }else{
+      throw new Error('Tidak ada hasil');
+    }
+  }catch(err){
+    resultEl.className = 'tl-result error';
+    resultEl.textContent = 'Gagal menerjemahkan. Pastikan kamu terhubung ke internet, lalu coba lagi.';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Terjemahkan';
+  }
+}
+
+/* ---------- backsound ambient (Web Audio API, tanpa file eksternal) ---------- */
+const Ambient = {
+  ctx: null,
+  nodes: [],
+  playing: false,
+  start(){
+    if(!this.ctx){
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const master = this.ctx.createGain();
+      master.gain.value = MUSIC_CONFIG.volume;
+      master.connect(this.ctx.destination);
+      this.master = master;
+
+      MUSIC_CONFIG.frequencies.forEach((freq, i)=>{
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        const gain = this.ctx.createGain();
+        gain.gain.value = 0.5;
+
+        const lfo = this.ctx.createOscillator();
+        lfo.frequency.value = 0.04 + i * 0.015;
+        const lfoGain = this.ctx.createGain();
+        lfoGain.gain.value = 0.35;
+        lfo.connect(lfoGain);
+        lfoGain.connect(gain.gain);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1200;
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(master);
+
+        osc.start();
+        lfo.start();
+        this.nodes.push(osc, lfo);
+      });
+    }
+    this.ctx.resume();
+    this.playing = true;
+  },
+  stop(){
+    if(this.ctx){
+      this.ctx.suspend();
+    }
+    this.playing = false;
+  }
+};
+
+function wireMusic(){
+  const btn = document.getElementById('music-toggle');
+  btn.addEventListener('click', ()=>{
+    if(Ambient.playing){
+      Ambient.stop();
+      btn.textContent = '🔈 Musik';
+      btn.classList.remove('on');
+    }else{
+      Ambient.start();
+      btn.textContent = '🔊 Musik';
+      btn.classList.add('on');
+    }
+  });
+}
+
+/* ---------- quiz ---------- */
+function startQuiz(){
+  const data = JSON.parse(py.start_quiz());
+  renderQuestion(data.question, data.index, data.total, data.score);
+}
+
+function renderQuestion(q, index, total, score){
+  const body = document.getElementById('quiz-body');
+  const isJp = q.direction === 'jp2id';
+  body.innerHTML = `
+    <div class="quiz-meta"><span>Soal ${index+1} / ${total}</span><span>Skor: ${score}</span></div>
+    <div class="quiz-bar"><div class="quiz-bar-fill" style="width:${(index/total)*100}%"></div></div>
+    <div class="quiz-card">
+      <div class="hint">${isJp ? 'Apa artinya dalam Bahasa Indonesia?' : 'Apa bahasa Jepangnya?'}</div>
+      <div class="prompt ${isJp ? 'jp' : ''}">${q.prompt}</div>
+    </div>
+    <div class="quiz-options" id="quiz-options"></div>
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+    <button class="quiz-next" id="quiz-next">Lanjut →</button>
+  `;
+
+  const optionsEl = document.getElementById('quiz-options');
+  q.options.forEach(opt=>{
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.textContent = opt;
+    btn.addEventListener('click', ()=> handleAnswer(opt));
+    optionsEl.appendChild(btn);
+  });
+}
+
+function handleAnswer(selected){
+  const result = JSON.parse(py.submit_answer(selected));
+  const feedback = document.getElementById('quiz-feedback');
+  const optButtons = document.querySelectorAll('.quiz-opt');
+
+  optButtons.forEach(btn=>{
+    btn.disabled = true;
+    if(btn.textContent === result.correct){
+      btn.classList.add('correct');
+    }else if(btn.textContent === selected && !result.is_correct){
+      btn.classList.add('wrong');
+    }
+  });
+
+  if(result.is_correct){
+    feedback.textContent = 'Kamu benar!';
+    feedback.className = 'quiz-feedback correct';
+  }else{
+    feedback.textContent = `Kamu salah. Jawaban yang benar: ${result.correct}`;
+    feedback.className = 'quiz-feedback wrong';
+  }
+
+  document.querySelector('.quiz-meta span:last-child').textContent = `Skor: ${result.score}`;
+  document.getElementById('quiz-next').style.display = 'block';
+  document.getElementById('quiz-next').onclick = nextQuestion;
+}
+
+function nextQuestion(){
+  const data = JSON.parse(py.advance_quiz());
+  if(data.finished){
+    renderQuizResult(data.score, data.total);
+  }else{
+    renderQuestion(data.question, data.index, data.total, data.score);
+  }
+}
+
+function renderQuizResult(score, total){
+  const body = document.getElementById('quiz-body');
+  body.innerHTML = `
+    <div class="quiz-result">
+      <p>Hasil kuis kamu</p>
+      <div class="score">${score} / ${total}</div>
+      <p>${score === total ? 'Sempurna! よくできました 🎉' : score >= total*0.6 ? 'Bagus, terus berlatih!' : 'Jangan menyerah, coba lagi ya!'}</p>
+      <button class="quiz-restart" id="quiz-restart">Ulangi Kuis</button>
+    </div>
+  `;
+  document.getElementById('quiz-restart').addEventListener('click', startQuiz);
+}
+</script>
+</body>
+</html>
